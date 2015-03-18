@@ -4,12 +4,16 @@ TODO
 """
 import argparse
 import cPickle as pickle
+import dtw
 import matplotlib.pyplot as plt
+import librosa
 import logging
+import mir_eval
 import numpy as np
 import os
 import pandas as pd
 import scipy
+import sklearn
 import time
 
 from joblib import Parallel, delayed
@@ -18,7 +22,7 @@ from msaf import jams2
 
 
 # Directory to store the features
-features_dir = "features"
+features_dir = "../features"
 
 # Distances to use for the DTW
 dist_dict = {
@@ -105,7 +109,8 @@ def compute_threshold(intervals=None, labels=None, scores=None, norm=None):
     precision = tp / (tp + fp)
     recall = tpr
 
-    fmeasure = np.asarray([mir_eval.util.f_measure(p, r) for p, r in zip(precision, recall)])
+    fmeasure = np.asarray([mir_eval.util.f_measure(p, r)
+                           for p, r in zip(precision, recall)])
 
     k = np.argmax(fmeasure)
     thr_opt = thr[k]
@@ -172,7 +177,8 @@ def compute_features(audio_file, intervals):
         The frame indeces.
     """
     # Check if features have already been computed
-    features_file = os.path.join(features_dir, audio_file + ".pk")
+    features_file = os.path.join(features_dir, os.path.basename(audio_file) +
+                                 ".pk")
     if os.path.isfile(features_file):
         return read_features(features_file)
 
@@ -248,12 +254,9 @@ def make_cost_matrix(audio_file, intervals, labels, dist):
             dtw_cost, distance, path = dtw.dtw(x_slice, y_slice, dist=dist)
             D[i, j] = dtw_cost
             D[j, i] = D[i, j]
-#             print path
+            path = list(path)
             path[0] = np.asarray(path[0], dtype=np.int32)
             path[1] = np.asarray(path[1], dtype=np.int32)
-#             except:
-#                 print "caca"
-#                 path = 0
             P[i][j] = path
 
     return D, P
@@ -283,15 +286,6 @@ def compute_score(file_struct, level, dist_key):
             fmeasures : fmeasures computes for the different normalizations,
             file_name : name of the file
     """
-    ref_inter, ref_labels = jams2.converters.load_jams_range(
-        file_struct.ref_file, "sections", annotator=0, context=level)
-    D, P = make_cost_matrix(file_struct.audio_file, ref_inter, ref_labels,
-                            dist=dist_dict[dist_key])
-    thresholds = {}
-    fmeasures = {}
-    for norm in norms:
-        thresholds[norm], fmeasures[norm] = compute_threshold(
-            intervals=ref_inter, labels=ref_labels, scores=D, norm=norm)
     try:
         ref_inter, ref_labels = jams2.converters.load_jams_range(
             file_struct.ref_file, "sections", annotator=0, context=level)
@@ -303,7 +297,7 @@ def compute_score(file_struct, level, dist_key):
             thresholds[norm], fmeasures[norm] = compute_threshold(
                 intervals=ref_inter, labels=ref_labels, scores=D, norm=norm)
     except:
-        loggin.warning("warning: no annotations for %s" % file_struct.audio_file)
+        logging.warning("warning: no annotations for %s" % file_struct.audio_file)
         ref_inter = None
         ref_labels = None
         D = None
@@ -385,7 +379,7 @@ def main(ds_path, n_jobs):
                 # Compute scores using multiple cpus
                 scores = Parallel(n_jobs=n_jobs)(delayed(compute_score)(
                     file_struct, level, dist_key)
-                    for file_struct in files[:5])
+                    for file_struct in files[:])
 
                 # Save all results
                 save_results(dataset, level, dist_key, scores)
