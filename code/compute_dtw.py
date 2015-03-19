@@ -389,7 +389,7 @@ def main(ds_path, n_jobs):
                 # Compute scores using multiple cpus
                 scores = Parallel(n_jobs=n_jobs)(delayed(compute_score)(
                     file_struct, level, dist_key)
-                    for file_struct in files[:])
+                    for file_struct in files[:2])
 
                 # Save all results
                 save_results(dataset, level, dist_key, scores)
