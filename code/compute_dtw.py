@@ -158,7 +158,7 @@ def save_features(cqgram, intframes, subseg, features_file):
         pickle.dump(features, f, protocol=-1)
 
 
-def compute_features(audio_file, intervals):
+def compute_features(audio_file, intervals, level):
     """Computes the subseg-sync cqt features from the given audio file, if
     they are not previously computed. Saves the results in the feat_dir folder.
 
@@ -168,6 +168,8 @@ def compute_features(audio_file, intervals):
         Path to the audio file.
     intervals : np.array
         Intervals containing the estimated boundaries.
+    level : str
+        Level in the hierarchy.
 
     Returns
     -------
@@ -177,8 +179,12 @@ def compute_features(audio_file, intervals):
         The frame indeces.
     """
     # Check if features have already been computed
-    features_file = os.path.join(features_dir, os.path.basename(audio_file) +
-                                 ".pk")
+    if level == "small_scale":
+        features_file = os.path.join(features_dir, os.path.basename(audio_file).split('.')[0] +
+                                    "small_scalle.mp3.pk")
+    else:
+        features_file = os.path.join(features_dir, os.path.basename(audio_file) +
+                                    ".pk")
     if os.path.isfile(features_file):
         return read_features(features_file)
 
@@ -207,7 +213,7 @@ def compute_features(audio_file, intervals):
     return cqgram, intframes
 
 
-def make_cost_matrix(audio_file, intervals, labels, dist):
+def make_cost_matrix(audio_file, intervals, labels, dist, level):
     """Computes the cost matrix of the DTW from the given audio file.
 
     Parameters
@@ -220,6 +226,8 @@ def make_cost_matrix(audio_file, intervals, labels, dist):
         Estimated segment labels.
     dist : fun
         Distance function to be used for the DTW
+    level : str
+        Level in the hierarchy.
 
     Returns
     -------
@@ -229,7 +237,7 @@ def make_cost_matrix(audio_file, intervals, labels, dist):
         List containing np.arrays() representing the DTW paths.
     """
     # Computes the features (return existing ones if already computed)
-    cqgram, intframes = compute_features(audio_file, intervals)
+    cqgram, intframes = compute_features(audio_file, intervals, level)
 
     # Score matrix
     D = np.nan * np.zeros((len(labels), len(labels)), dtype=np.float32)
@@ -286,11 +294,20 @@ def compute_score(file_struct, level, dist_key):
             fmeasures : fmeasures computes for the different normalizations,
             file_name : name of the file
     """
+    ref_inter, ref_labels = jams2.converters.load_jams_range(
+        file_struct.ref_file, "sections", annotator=0, context=level)
+    D, P = make_cost_matrix(file_struct.audio_file, ref_inter, ref_labels,
+                            dist=dist_dict[dist_key], level=level)
+    thresholds = {}
+    fmeasures = {}
+    for norm in norms:
+        thresholds[norm], fmeasures[norm] = compute_threshold(
+            intervals=ref_inter, labels=ref_labels, scores=D, norm=norm)
     try:
         ref_inter, ref_labels = jams2.converters.load_jams_range(
             file_struct.ref_file, "sections", annotator=0, context=level)
         D, P = make_cost_matrix(file_struct.audio_file, ref_inter, ref_labels,
-                                dist=dist_dict[dist_key])
+                                dist=dist_dict[dist_key], level=level)
         thresholds = {}
         fmeasures = {}
         for norm in norms:
@@ -372,6 +389,8 @@ def main(ds_path, n_jobs):
 
         # Compute results for the specific level and distance
         for level in dataset_levels[dataset]:
+            if dataset != "SALAMI" or level != "small_scale":
+                continue
             for dist_key in dist_dict.keys():
                 logging.info("Computing: %s, %s, %s" %
                              (dataset, level, dist_key))
