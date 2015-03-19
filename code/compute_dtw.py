@@ -179,9 +179,10 @@ def compute_features(audio_file, intervals, level):
         The frame indeces.
     """
     # Check if features have already been computed
+    import pdb; pdb.set_trace()  # XXX BREAKPOINT
     if level == "small_scale":
         features_file = os.path.join(features_dir, os.path.basename(audio_file).split('.')[0] +
-                                    "small_scalle.mp3.pk")
+                                    "_small_scale.mp3.pk")
     else:
         features_file = os.path.join(features_dir, os.path.basename(audio_file) +
                                     ".pk")
