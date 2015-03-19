@@ -294,15 +294,6 @@ def compute_score(file_struct, level, dist_key):
             fmeasures : fmeasures computes for the different normalizations,
             file_name : name of the file
     """
-    ref_inter, ref_labels = jams2.converters.load_jams_range(
-        file_struct.ref_file, "sections", annotator=0, context=level)
-    D, P = make_cost_matrix(file_struct.audio_file, ref_inter, ref_labels,
-                            dist=dist_dict[dist_key], level=level)
-    thresholds = {}
-    fmeasures = {}
-    for norm in norms:
-        thresholds[norm], fmeasures[norm] = compute_threshold(
-            intervals=ref_inter, labels=ref_labels, scores=D, norm=norm)
     try:
         ref_inter, ref_labels = jams2.converters.load_jams_range(
             file_struct.ref_file, "sections", annotator=0, context=level)
