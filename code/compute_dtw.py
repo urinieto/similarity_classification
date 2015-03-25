@@ -367,7 +367,7 @@ def main(ds_path, n_jobs):
     # Different levels for the datasets
     dataset_levels = {
         "Isophonics": ["function"],
-        "SALAMI": ["large_scale", "small_scale"]
+        "SALAMI": ["function", "large_scale", "small_scale"]
     }
 
     # Make sure the features folder exists
@@ -380,9 +380,9 @@ def main(ds_path, n_jobs):
 
         # Compute results for the specific level and distance
         for level in dataset_levels[dataset]:
-            if dataset != "SALAMI" or level != "small_scale":
-                continue
             for dist_key in dist_dict.keys():
+                if dataset != "SALAMI" and level != "function":
+                    continue
                 logging.info("Computing: %s, %s, %s" %
                              (dataset, level, dist_key))
 
