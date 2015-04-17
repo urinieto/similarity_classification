@@ -192,10 +192,10 @@ def compute_features(audio_file, intervals, level):
 
     # Default hopsize is 512
     hopsize = 512
-    cqgram = librosa.logamplitude(librosa.cqt(y, sr=sr)**2, ref_power=np.max)
+    cqgram = librosa.logamplitude(librosa.cqt(y, sr=sr, hop_length=hopsize)**2, ref_power=np.max)
 
     # convert intervals to frames
-    intframes = librosa.time_to_frames(intervals)
+    intframes = librosa.time_to_frames(intervals, sr=sr, hop_length=hopsize)
 
     # Track beats
     y_harmonic, y_percussive = librosa.effects.hpss(y)
@@ -298,6 +298,9 @@ def compute_score(file_struct, level, dist_key):
     try:
         ref_inter, ref_labels = jams2.converters.load_jams_range(
             file_struct.ref_file, "sections", annotator=0, context=level)
+
+        assert len(ref_labels) > 0
+
         D, P = make_cost_matrix(file_struct.audio_file, ref_inter, ref_labels,
                                 dist=dist_dict[dist_key], level=level)
         thresholds = {}
@@ -305,8 +308,9 @@ def compute_score(file_struct, level, dist_key):
         for norm in norms:
             thresholds[norm], fmeasures[norm] = compute_threshold(
                 intervals=ref_inter, labels=ref_labels, scores=D, norm=norm)
-    except:
-        logging.warning("warning: no annotations for %s" % file_struct.audio_file)
+    except AssertionError:
+        logging.warning("warning: no annotations for %s" %
+                        file_struct.audio_file)
         ref_inter = None
         ref_labels = None
         D = None
