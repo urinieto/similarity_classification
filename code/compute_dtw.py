@@ -98,6 +98,9 @@ def compute_threshold(intervals=None, labels=None, scores=None, norm=None):
     num_pos = np.sum(label_agreement)
     num_neg = np.sum(label_disagreement)
 
+    if num_pos == 0 or num_neg == 0:
+        return 0.0, 0.0
+
     y_true = np.concatenate([np.zeros(len(tp_scores)), np.ones(len(fp_scores))])
     y_score = np.concatenate([tp_scores, fp_scores])
 
@@ -113,7 +116,6 @@ def compute_threshold(intervals=None, labels=None, scores=None, norm=None):
                            for p, r in zip(precision, recall)])
 
     k = np.argmax(fmeasure)
-    thr_opt = thr[k]
 
     return thr[k], fmeasure[k]
 
@@ -308,6 +310,10 @@ def compute_score(file_struct, level, dist_key):
         for norm in norms:
             thresholds[norm], fmeasures[norm] = compute_threshold(
                 intervals=ref_inter, labels=ref_labels, scores=D, norm=norm)
+    except IndexError as e:
+        logging.warning("warning: problem computing threshold %s at level %s" %
+                        (file_struct.audio_file, level))
+        raise e
     except AssertionError:
         logging.warning("warning: no annotations for %s" %
                         file_struct.audio_file)
