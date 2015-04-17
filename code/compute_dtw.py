@@ -188,27 +188,28 @@ def compute_features(audio_file, intervals, level):
     if os.path.isfile(features_file):
         return read_features(features_file)
 
-    y, sr = librosa.load(audio_file)
+    y, sr = librosa.load(audio_file, sr=11025)
 
+    # Default hopsize is 512
+    hopsize = 512
     cqgram = librosa.logamplitude(librosa.cqt(y, sr=sr)**2, ref_power=np.max)
 
     # convert intervals to frames
     intframes = librosa.time_to_frames(intervals)
 
-    tempo, beats = librosa.beat.beat_track(y=y, sr=sr, trim=False)
-
-    # Sub-divide
-    subseg = librosa.segment.subsegment(cqgram, beats)
-    subseg = librosa.util.fix_frames(subseg, x_min=0, x_max=cqgram.shape[1])
+    # Track beats
+    y_harmonic, y_percussive = librosa.effects.hpss(y)
+    tempo, beats = librosa.beat.beat_track(y=y_percussive, sr=sr,
+                                           hop_length=hopsize)
 
     # Synchronize
-    cqgram = librosa.feature.sync(cqgram, subseg, aggregate=np.median)
+    cqgram = librosa.feature.sync(cqgram, beats, aggregate=np.median)
 
     # Match intervals to subseg points
-    intframes = librosa.util.match_events(intframes, subseg)
+    intframes = librosa.util.match_events(intframes, beats)
 
     # Save the features
-    save_features(cqgram, intframes, subseg, features_file)
+    save_features(cqgram, intframes, beats, features_file)
 
     return cqgram, intframes
 
@@ -367,7 +368,8 @@ def main(ds_path, n_jobs):
     # Different levels for the datasets
     dataset_levels = {
         "Isophonics": ["function"],
-        "SALAMI": ["function", "large_scale", "small_scale"]
+        #"SALAMI": ["function", "large_scale", "small_scale"]
+        "SALAMI": ["function", "large_scale"]
     }
 
     # Make sure the features folder exists
