@@ -313,8 +313,13 @@ def compute_score(file_struct, level, dist_key):
     except IndexError as e:
         logging.warning("warning: problem computing threshold %s at level %s" %
                         (file_struct.audio_file, level))
-        raise e
-    except AssertionError or IOError:
+        ref_inter = None
+        ref_labels = None
+        D = None
+        P = None
+        thresholds = None
+        fmeasures = None
+    except (AssertionError, IOError) as e:
         logging.warning("warning: no annotations for %s" %
                         file_struct.audio_file)
         ref_inter = None
@@ -373,13 +378,14 @@ def main(ds_path, n_jobs):
     """
 
     # Datasets from which to compute the DTWs
-    datasets = ["SALAMI", "Isophonics"]
+    datasets = ["Isophonics"]
 
     # Different levels for the datasets
     dataset_levels = {
         "Isophonics": ["function"],
         #"SALAMI": ["function", "large_scale", "small_scale"]
-        "SALAMI": ["function", "large_scale"]
+        #"SALAMI": ["function", "large_scale"]
+        "SALAMI": ["function"]
     }
 
     # Make sure the features folder exists
