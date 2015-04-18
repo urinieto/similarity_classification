@@ -314,7 +314,7 @@ def compute_score(file_struct, level, dist_key):
         logging.warning("warning: problem computing threshold %s at level %s" %
                         (file_struct.audio_file, level))
         raise e
-    except AssertionError:
+    except AssertionError or IOError:
         logging.warning("warning: no annotations for %s" %
                         file_struct.audio_file)
         ref_inter = None
