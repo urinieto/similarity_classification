@@ -22,7 +22,7 @@ from msaf import jams2
 
 
 # Directory to store the features
-features_dir = "../features"
+features_dir = "../features_beats"
 
 # Distances to use for the DTW
 dist_dict = {
@@ -196,9 +196,6 @@ def compute_features(audio_file, intervals, level):
     hopsize = 512
     cqgram = librosa.logamplitude(librosa.cqt(y, sr=sr, hop_length=hopsize)**2, ref_power=np.max)
 
-    # convert intervals to frames
-    intframes = librosa.time_to_frames(intervals, sr=sr, hop_length=hopsize)
-
     # Track beats
     y_harmonic, y_percussive = librosa.effects.hpss(y)
     tempo, beats = librosa.beat.beat_track(y=y_percussive, sr=sr,
@@ -207,8 +204,13 @@ def compute_features(audio_file, intervals, level):
     # Synchronize
     cqgram = librosa.feature.sync(cqgram, beats, aggregate=np.median)
 
-    # Match intervals to subseg points
-    intframes = librosa.util.match_events(intframes, beats)
+    intframes = None
+    if intervals is not None:
+        # convert intervals to frames
+        intframes = librosa.time_to_frames(intervals, sr=sr, hop_length=hopsize)
+
+        # Match intervals to subseg points
+        intframes = librosa.util.match_events(intframes, beats)
 
     # Save the features
     save_features(cqgram, intframes, beats, features_file)
@@ -328,6 +330,8 @@ def compute_score(file_struct, level, dist_key):
         P = None
         thresholds = None
         fmeasures = None
+    finally:
+        cqgram, intframes = compute_features(file_struct.audio_file, None, level)
     ret = {
         "intervals": ref_inter,
         "labels": ref_labels,
@@ -378,7 +382,7 @@ def main(ds_path, n_jobs):
     """
 
     # Datasets from which to compute the DTWs
-    datasets = ["Isophonics"]
+    datasets = ["SALAMI", "Isophonics"]
 
     # Different levels for the datasets
     dataset_levels = {
